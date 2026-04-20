@@ -184,5 +184,25 @@ int tree_from_index(ObjectID *id_out) {
     }
 
     (void)id_out;
+    // Write subtrees
+    for (int i = 0; i < dir_count; i++) {
+        void *data;
+        size_t len;
+
+        if (tree_serialize(&dirs[i].tree, &data, &len) != 0) return -1;
+
+        ObjectID tree_id;
+        if (object_write(OBJ_TREE, data, len, &tree_id) != 0) {
+            free(data);
+            return -1;
+        }
+
+        free(data);
+
+        TreeEntry *te = &root.entries[root.count++];
+        te->mode = MODE_DIR;
+        strcpy(te->name, dirs[i].name);
+        te->hash = tree_id;
+    }
     return -1;
 }
