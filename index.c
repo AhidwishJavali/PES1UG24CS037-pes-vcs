@@ -185,16 +185,13 @@ static int compare_index_entries(const void *a, const void *b) {
 }
 
 int index_save(const Index *index) {
-    Index sorted = *index;
-
-    qsort(sorted.entries, sorted.count, sizeof(IndexEntry), compare_index_entries);
-
+    qsort(index->entries, index->count, sizeof(IndexEntry), compare_index_entries);
     FILE *f = fopen(".pes/index.tmp", "w");
     if (!f) return -1;
 
-    for (int i = 0; i < sorted.count; i++) {
-        const IndexEntry *e = &sorted.entries[i];
-
+    for (int i = 0; i < index->count; i++) {
+        const IndexEntry *e = &index->entries[i];
+	if(!e->path[0]) continue;
         char hash_hex[HASH_HEX_SIZE + 1];
         hash_to_hex(&e->hash, hash_hex);
 
@@ -231,13 +228,14 @@ int index_add(Index *index, const char *path) {
     FILE *f = fopen(path, "rb");
     if (!f) return -1;
 
-    void *buffer = malloc(st.st_size);
+   size_t alloc_size = (st.st_size == 0) ? 1 : st.st_size;
+void *buffer = malloc(alloc_size);
     if (!buffer) {
         fclose(f);
         return -1;
     }
 
-    fread(buffer, 1, st.st_size, f);
+    
     if (fread(buffer, 1, st.st_size, f) != (size_t)st.st_size) {
     free(buffer);
     fclose(f);
@@ -247,10 +245,10 @@ int index_add(Index *index, const char *path) {
 
     ObjectID id;
     if (object_write(OBJ_BLOB, buffer, st.st_size, &id) != 0) {
-        free(buffer);
-        return -1;
-    }
-
+    printf("object_write failed\n");
+    free(buffer);
+    return -1;
+}
     free(buffer);
 
     IndexEntry *e = index_find(index, path);

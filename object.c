@@ -125,9 +125,9 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     char path[512];
     object_path(id_out, path, sizeof(path));
 
-    // Extract directory path
+    // Extract directory path (.pes/objects/XX)
     char dir[512];
-    strncpy(dir, path, sizeof(dir));
+    snprintf(dir, sizeof(dir), "%s", path);
     char *slash = strrchr(dir, '/');
     if (!slash) {
         free(buffer);
@@ -135,7 +135,9 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     }
     *slash = '\0';
 
-    // Create directory if not exists
+    // 🔥 FIX: Ensure ALL parent directories exist
+    mkdir(".pes", 0755);
+    mkdir(".pes/objects", 0755);
     mkdir(dir, 0755);
 
     // 5. Temp file
@@ -157,7 +159,6 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
         return -1;
     }
 
-    // fsync file
     fsync(fd);
     close(fd);
 
