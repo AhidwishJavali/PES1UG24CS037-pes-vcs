@@ -238,6 +238,11 @@ int index_add(Index *index, const char *path) {
     }
 
     fread(buffer, 1, st.st_size, f);
+    if (fread(buffer, 1, st.st_size, f) != (size_t)st.st_size) {
+    free(buffer);
+    fclose(f);
+    return -1;
+}
     fclose(f);
 
     ObjectID id;
