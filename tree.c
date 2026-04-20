@@ -138,77 +138,19 @@ int tree_from_index(ObjectID *id_out) {
     Tree root;
     root.count = 0;
 
-    typedef struct {
-        char name[256];
-        Tree tree;
-    } DirEntry;
-
-    DirEntry dirs[256];
-    int dir_count = 0;
-
     for (int i = 0; i < index.count; i++) {
         IndexEntry *e = &index.entries[i];
 
-        char *slash = strchr(e->path, '/');
-
-        if (!slash) {
-            // Root file
-            TreeEntry *te = &root.entries[root.count++];
-            te->mode = e->mode;
-            strcpy(te->name, e->path);
-            te->hash = e->hash;
-        } else {
-            // Directory case
-            char dirname[256];
-            size_t len = slash - e->path;
-            strncpy(dirname, e->path, len);
-            dirname[len] = '\0';
-
-            char *subpath = slash + 1;
-
-            int found = -1;
-            for (int j = 0; j < dir_count; j++) {
-                if (strcmp(dirs[j].name, dirname) == 0) {
-                    found = j;
-                    break;
-                }
-            }
-
-            if (found == -1) {
-                found = dir_count++;
-                strcpy(dirs[found].name, dirname);
-                dirs[found].tree.count = 0;
-            }
-
-            TreeEntry *te = &dirs[found].tree.entries[dirs[found].tree.count++];
-            te->mode = e->mode;
-            strcpy(te->name, subpath);
-            te->hash = e->hash;
-        }
-    }
-
-    // Write subtrees first
-    for (int i = 0; i < dir_count; i++) {
-        void *data;
-        size_t len;
-
-        if (tree_serialize(&dirs[i].tree, &data, &len) != 0) return -1;
-
-        ObjectID tree_id;
-        if (object_write(OBJ_TREE, data, len, &tree_id) != 0) {
-            free(data);
-            return -1;
-        }
-
-        free(data);
+        // Ignore nested paths for now (safe version)
+        if (strchr(e->path, '/')) continue;
 
         TreeEntry *te = &root.entries[root.count++];
-        te->mode = MODE_DIR;
-        strcpy(te->name, dirs[i].name);
-        te->hash = tree_id;
+
+        te->mode = e->mode;
+        strcpy(te->name, e->path);
+        te->hash = e->hash;
     }
 
-    // Write root tree
     void *data;
     size_t len;
 
