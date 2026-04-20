@@ -136,6 +136,17 @@ int tree_from_index(ObjectID *id_out) {
     Tree root;
     root.count = 0;
 
+    for (int i = 0; i < index.count; i++) {
+        IndexEntry *e = &index.entries[i];
+
+        if (!strchr(e->path, '/')) {
+            TreeEntry *te = &root.entries[root.count++];
+            te->mode = e->mode;
+            strcpy(te->name, e->path);
+            te->hash = e->hash;
+        }
+    }
+
     (void)id_out;
     return -1;
 }
