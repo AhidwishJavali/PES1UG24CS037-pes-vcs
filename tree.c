@@ -15,6 +15,8 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include "index.h"
+#include "pes.h"
 
 // ─── Mode Constants ─────────────────────────────────────────────────────────
 
@@ -150,11 +152,13 @@ int tree_from_index(ObjectID *id_out) {
         char *slash = strchr(e->path, '/');
 
         if (!slash) {
+            // Root file
             TreeEntry *te = &root.entries[root.count++];
             te->mode = e->mode;
             strcpy(te->name, e->path);
             te->hash = e->hash;
         } else {
+            // Directory case
             char dirname[256];
             size_t len = slash - e->path;
             strncpy(dirname, e->path, len);
@@ -183,10 +187,29 @@ int tree_from_index(ObjectID *id_out) {
         }
     }
 
-    (void)id_out;
-    // Write subtrees
+    // Write subtrees first
     for (int i = 0; i < dir_count; i++) {
         void *data;
+        size_t len;
+
+        if (tree_serialize(&dirs[i].tree, &data, &len) != 0) return -1;
+
+        ObjectID tree_id;
+        if (object_write(OBJ_TREE, data, len, &tree_id) != 0) {
+            free(data);
+            return -1;
+        }
+
+        free(data);
+
+        TreeEntry *te = &root.entries[root.count++];
+        te->mode = MODE_DIR;
+        strcpy(te->name, dirs[i].name);
+        te->hash = tree_id;
+    }
+
+    // Write root tree
+    void *data;
     size_t len;
 
     if (tree_serialize(&root, &data, &len) != 0) return -1;
@@ -198,6 +221,4 @@ int tree_from_index(ObjectID *id_out) {
 
     free(data);
     return 0;
-}
-    return -1;
 }
