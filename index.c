@@ -255,7 +255,7 @@ int index_add(Index *index, const char *path) {
         e = &index->entries[index->count++];
     }
 
-    e->mode = st.st_mode;
+    e->mode = (st.st_mode & S_IXUSR) ? 0100755 : 0100644;
     e->hash = id;
     e->mtime_sec = st.st_mtime;
     e->size = st.st_size;
