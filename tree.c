@@ -136,13 +136,49 @@ int tree_from_index(ObjectID *id_out) {
     Tree root;
     root.count = 0;
 
+    typedef struct {
+        char name[256];
+        Tree tree;
+    } DirEntry;
+
+    DirEntry dirs[256];
+    int dir_count = 0;
+
     for (int i = 0; i < index.count; i++) {
         IndexEntry *e = &index.entries[i];
 
-        if (!strchr(e->path, '/')) {
+        char *slash = strchr(e->path, '/');
+
+        if (!slash) {
             TreeEntry *te = &root.entries[root.count++];
             te->mode = e->mode;
             strcpy(te->name, e->path);
+            te->hash = e->hash;
+        } else {
+            char dirname[256];
+            size_t len = slash - e->path;
+            strncpy(dirname, e->path, len);
+            dirname[len] = '\0';
+
+            char *subpath = slash + 1;
+
+            int found = -1;
+            for (int j = 0; j < dir_count; j++) {
+                if (strcmp(dirs[j].name, dirname) == 0) {
+                    found = j;
+                    break;
+                }
+            }
+
+            if (found == -1) {
+                found = dir_count++;
+                strcpy(dirs[found].name, dirname);
+                dirs[found].tree.count = 0;
+            }
+
+            TreeEntry *te = &dirs[found].tree.entries[dirs[found].tree.count++];
+            te->mode = e->mode;
+            strcpy(te->name, subpath);
             te->hash = e->hash;
         }
     }
